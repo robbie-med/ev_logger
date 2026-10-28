@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0d47a1">
+  <title>Duty Hours</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header id="app-header">
+    <h1>Duty Hours</h1>
+    <div class="hdr-actions">
+      <button id="fun" class="hdr-btn" type="button" aria-label="Fun mode">🦄 Fun</button>
+      <button id="nav-settings" class="hdr-btn" type="button">Settings</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- PLANNER -->
+    <section id="screen-hours" class="screen">
+      <div class="month-row">
+        <button id="prev" class="btn secondary" type="button" aria-label="Previous month">‹</button>
+        <input id="month" type="month" aria-label="Month">
+        <button id="next" class="btn secondary" type="button" aria-label="Next month">›</button>
+      </div>
+
+      <section class="panel">
+        <h3>Rotations</h3>
+        <div id="rotations"></div>
+        <button id="add-rotation" class="btn secondary small" type="button">+ Add rotation</button>
+      </section>
+      <div id="brushes" class="brushes"></div>
+      <div id="grid" class="grid"></div>
+
+      <div class="actions">
+        <button id="amion" class="btn primary" type="button">Pre-fill from Amion</button>
+        <button id="paste-sched" class="btn secondary" type="button">Paste schedule</button>
+        <button id="jitter" class="btn secondary" type="button">Add jitter</button>
+        <button id="fill-weekdays" class="btn secondary" type="button">Fill weekdays</button>
+        <button id="fill-all" class="btn secondary" type="button">Fill every day</button>
+        <button id="clear-month" class="btn secondary" type="button">Clear month</button>
+      </div>
+
+      <button id="submit" class="btn primary big" type="button">Nothing to send yet</button>
+      <div id="status" class="sub"></div>
+
+      <details id="map-box">
+        <summary>Amion → e-value</summary>
+        <div id="amion-map"></div>
+        <h3>Clinic half-days</h3>
+        <div class="row sessrow">
+          <span class="mapkey">AM</span>
+          <input id="sess-am-s" type="time" step="900" aria-label="AM start">
+          <input id="sess-am-e" type="time" step="900" aria-label="AM end">
+        </div>
+        <div class="row sessrow">
+          <span class="mapkey">PM</span>
+          <input id="sess-pm-s" type="time" step="900" aria-label="PM start">
+          <input id="sess-pm-e" type="time" step="900" aria-label="PM end">
+        </div>
+      </details>
+
+      <details id="weekly-box">
+        <summary>Every week</summary>
+        <div id="weekly"></div>
+        <button id="add-weekly" class="btn secondary small" type="button">+ Add weekly block</button>
+        <label class="check-row"><input id="fill-off" type="checkbox"> Fill off-time as Non Duty Hours</label>
+      </details>
+
+      <details id="types-box">
+        <summary>Day types</summary>
+        <div id="types"></div>
+        <button id="add-type" class="btn secondary" type="button">+ Add day type</button>
+      </details>
+    </section>
+
+    <!-- SETTINGS -->
+    <section id="screen-settings" class="screen">
+      <h2>Settings</h2>
+      <label>e-value username
+        <input id="set-username" type="text" autocomplete="username">
+      </label>
+      <label>e-value password
+        <input id="set-password" type="password" autocomplete="current-password">
+      </label>
+      <button id="btn-login" class="btn primary" type="button">Log in &amp; load lists</button>
+      <div id="login-status" class="msg"></div>
+      <h3>Amion</h3>
+      <label>Your name in Amion
+        <select id="set-amion-name"></select>
+      </label>
+      <label>Amion schedule code
+        <input id="set-amion-lo" type="text" autocomplete="off" placeholder="(optional)">
+      </label>
+      <h3>Look</h3>
+      <label>Theme
+        <select id="set-theme">
+          <option value="system">System</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark (OLED black)</option>
+        </select>
+      </label>
+      <label class="color-row">Accent <input id="set-accent" type="color"></label>
+      <h3>Connection</h3>
+      <label>Proxy URL
+        <input id="set-proxy" type="url">
+      </label>
+      <button id="btn-back" class="btn secondary" type="button">Back to calendar</button>
+    </section>
+  </main>
+
+  <!-- day sheet -->
+  <div id="editor" class="overlay hidden">
+    <div class="sheet">
+      <h3 id="ed-title"></h3>
+      <p id="ed-rot" class="sub"></p>
+
+      <div id="ed-ev" class="hidden">
+        <div class="seg-head"><span>Start</span><span>End</span><span>Activity</span><span>Task</span></div>
+        <div id="ed-ev-list"></div>
+        <div id="ed-ev-status" class="msg"></div>
+      </div>
+
+      <div id="ed-plan">
+        <label>Day type <select id="ed-type"></select></label>
+        <div class="seg-head"><span>Start</span><span>End</span><span>Activity</span><span>Task</span></div>
+        <div id="ed-segs"></div>
+        <button id="ed-add-seg" class="btn secondary small" type="button">+ block</button>
+        <div id="ed-preview" class="preview"></div>
+        <button id="ed-save" class="btn primary" type="button">Save day</button>
+      </div>
+      <button id="ed-cancel" class="btn secondary" type="button">Close</button>
+    </div>
+  </div>
+
+  <!-- schedule paste -->
+  <div id="paster" class="overlay hidden">
+    <div class="sheet">
+      <h3>Paste schedule</h3>
+      <textarea id="paste-text" rows="10" placeholder="3 clinic&#10;4 1pm-10pm&#10;5 off"></textarea>
+      <button id="paste-apply" class="btn primary" type="button">Load into calendar</button>
+      <button id="paste-cancel" class="btn secondary" type="button">Cancel</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="fun.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

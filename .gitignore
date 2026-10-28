@@ -1,0 +1,5 @@
+# never commit captures, sessions or secrets
+*.har
+proxy/data/
+__pycache__/
+*.pyc

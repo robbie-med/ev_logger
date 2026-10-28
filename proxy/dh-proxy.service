@@ -1,0 +1,22 @@
+[Unit]
+Description=Duty Hours e-value proxy
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=robbie
+WorkingDirectory=/opt/dh-proxy
+Environment=DH_PORT=8103
+Environment=DH_DATA_DIR=/opt/dh-proxy/data
+# Your program's Amion login code (kept out of the public repo):
+#Environment=AMION_LO=yourcode
+Environment=DH_ORIGINS=https://robbie-med.github.io,http://localhost,http://127.0.0.1
+# Same residential exit ev-quicklog uses (home PC SOCKS5 over Nebula).
+#Environment=EV_SOCKS_PROXY=socks5h://HOME_PC_NEBULA_IP:1080
+ExecStart=/opt/dh-proxy/venv/bin/python /opt/dh-proxy/app.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
