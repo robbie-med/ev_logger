@@ -78,6 +78,43 @@
       </details>
     </section>
 
+    <!-- WELCOME: name -> e-value login -->
+    <section id="screen-welcome" class="screen">
+      <div class="welcome">
+        <div class="logo">🗓️</div>
+        <h2>Duty Hours</h2>
+        <ol class="steps"><li id="w-dot1" class="on">Name</li><li id="w-dot2">Look</li><li id="w-dot3">e-value</li></ol>
+        <div id="w-step1">
+          <label>Your name <select id="w-name"></select></label>
+          <button id="w-next" class="btn primary big" type="button">Next</button>
+        </div>
+        <div id="w-step2" class="hidden">
+          <div class="theme-pick" role="radiogroup" aria-label="Theme">
+            <button type="button" class="theme-opt" data-theme="system" role="radio"><span class="sw sys"></span>System</button>
+            <button type="button" class="theme-opt" data-theme="light" role="radio"><span class="sw lt"></span>Light</button>
+            <button type="button" class="theme-opt" data-theme="dark" role="radio"><span class="sw dk"></span>Dark</button>
+          </div>
+          <div class="accent-pick" role="radiogroup" aria-label="Accent colour">
+            <button type="button" class="dot" data-accent="#0d47a1" style="background:#0d47a1" aria-label="Blue"></button>
+            <button type="button" class="dot" data-accent="#7c3aed" style="background:#7c3aed" aria-label="Purple"></button>
+            <button type="button" class="dot" data-accent="#db2777" style="background:#db2777" aria-label="Pink"></button>
+            <button type="button" class="dot" data-accent="#059669" style="background:#059669" aria-label="Green"></button>
+            <button type="button" class="dot" data-accent="#ea580c" style="background:#ea580c" aria-label="Orange"></button>
+            <input id="w-accent" type="color" aria-label="Custom colour">
+          </div>
+          <button id="w-next2" class="btn primary big" type="button">Next</button>
+          <button id="w-back2" class="btn secondary" type="button">Back</button>
+        </div>
+        <div id="w-step3" class="hidden">
+          <label>e-value username <input id="w-user" type="text" autocomplete="username"></label>
+          <label>e-value password <input id="w-pass" type="password" autocomplete="current-password"></label>
+          <button id="w-login" class="btn primary big" type="button">Log in</button>
+          <button id="w-back" class="btn secondary" type="button">Back</button>
+        </div>
+        <div id="w-status" class="sub"></div>
+      </div>
+    </section>
+
     <!-- SETTINGS -->
     <section id="screen-settings" class="screen">
       <h2>Settings</h2>

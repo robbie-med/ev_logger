@@ -863,8 +863,7 @@ async function prefillAmion() {
 
 /** Fill the Settings name suggestions from this month's Amion roster. */
 /** Fill the name dropdown from Amion's block-schedule roster (every resident, faculty excluded). */
-async function loadAmionNames() {
-  const sel = $('set-amion-name');
+async function loadAmionNames(sel = $('set-amion-name')) {
   const fill = names => {
     sel.innerHTML = '';
     const blank = el('option', '', '— pick your name —');
@@ -1146,13 +1145,87 @@ function applyTheme() {
   document.querySelector('meta[name="theme-color"]').content = dark ? '#000000' : accent;
 }
 
+// ---------- welcome: pick your name, log in to e-value, land on a pre-filled month ----------
+function welcomeStep(n) {
+  [1, 2, 3].forEach(i => {
+    $('w-step' + i).classList.toggle('hidden', n !== i);
+    $('w-dot' + i).classList.toggle('on', n >= i);
+  });
+  $('w-status').textContent = '';
+  if (n === 2) markLook();
+}
+
+/** Highlight the current theme + accent on the Look step. */
+function markLook() {
+  document.querySelectorAll('.theme-opt').forEach(b => b.setAttribute('aria-checked', b.dataset.theme === (settings.theme || 'system')));
+  const accent = settings.accent || DEFAULT_ACCENT;
+  document.querySelectorAll('.accent-pick .dot').forEach(b => b.setAttribute('aria-checked', b.dataset.accent === accent));
+  $('w-accent').value = accent;
+}
+
+function setLook(patch) {
+  Object.assign(settings, patch);
+  store.set('settings', settings);
+  applyTheme();
+  markLook();
+}
+
+function startWelcome() {
+  show('welcome');
+  welcomeStep(1);
+  $('w-user').value = settings.username || '';
+  loadAmionNames($('w-name'));
+}
+
+function bindWelcome() {
+  $('w-next').onclick = () => {
+    if (!$('w-name').value) { $('w-status').textContent = 'Pick your name.'; return; }
+    settings.amionName = $('w-name').value;
+    store.set('settings', settings);
+    welcomeStep(2);
+  };
+  document.querySelectorAll('.theme-opt').forEach(b => { b.onclick = () => setLook({ theme: b.dataset.theme }); });
+  document.querySelectorAll('.accent-pick .dot').forEach(b => { b.onclick = () => setLook({ accent: b.dataset.accent }); });
+  $('w-accent').addEventListener('input', () => setLook({ accent: $('w-accent').value }));
+  $('w-next2').onclick = () => { welcomeStep(3); $('w-user').focus(); };
+  $('w-back2').onclick = () => welcomeStep(1);
+  $('w-back').onclick = () => welcomeStep(2);
+  $('w-pass').addEventListener('keydown', e => { if (e.key === 'Enter') $('w-login').click(); });
+  $('w-login').onclick = async () => {
+    const st = $('w-status');
+    settings.username = $('w-user').value.trim();
+    settings.password = $('w-pass').value;
+    if (!settings.username || !settings.password) { st.textContent = 'Enter your e-value username and password.'; return; }
+    settings.proxy = settings.proxy || DEFAULT_PROXY;
+    store.set('settings', settings);
+    $('w-login').disabled = true;
+    try {
+      st.textContent = 'Logging in…';
+      await login();
+      st.textContent = 'Loading your activities…';
+      await loadLookups();
+      show('hours');
+      month = iso(new Date()).slice(0, 7);
+      await openMonth();
+      if (!monthDates().some(d => dh.days[d])) await prefillAmion(); // first visit: build this month from Amion
+    } catch (err) {
+      st.textContent = err.message === 'INVALID_CREDENTIALS' ? 'Wrong username or password.' : 'Failed: ' + err.message;
+      settings.password = '';
+      store.set('settings', settings);
+    } finally {
+      $('w-login').disabled = false;
+    }
+  };
+}
+
 function init() {
   applyTheme();
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
   bind();
+  bindWelcome();
   show('hours');
   openMonth();
-  if (!loggedIn()) $('nav-settings').click();
+  if (!loggedIn() || !settings.amionName) startWelcome();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 
