@@ -1,5 +1,5 @@
 /* fun.js — Fun mode: emoji confetti + procedurally generated happy music (Web Audio, no files).
- * Exposes window.Fun = { toggle(), on, burst() }. Music only starts from a tap (browser autoplay rules).
+ * Exposes window.Fun = { toggle(), on, burst(), nuke() }. Music only starts from a tap (browser autoplay rules).
  */
 'use strict';
 
@@ -160,9 +160,23 @@
     if (master) { master.gain.setTargetAtTime(0, ac.currentTime, 0.1); master = null; }
   }
 
+  /** Full-screen nuke.gif for a few seconds (Clear all). A fresh <img> each time so the gif plays from frame 1. */
+  function nuke() {
+    if (calm) return;
+    const img = document.createElement('img');
+    img.className = 'fun-nuke';
+    img.alt = '';
+    img.src = 'nuke.gif';
+    img.onerror = () => img.remove();
+    document.body.appendChild(img);
+    setTimeout(() => { burst(); burst(innerWidth / 4); burst(innerWidth * 3 / 4); }, 600);
+    setTimeout(() => img.remove(), 3500);
+  }
+
   const Fun = {
     on: false,
     burst,
+    nuke,
     toggle() {
       Fun.on = !Fun.on;
       document.body.classList.toggle('fun', Fun.on);

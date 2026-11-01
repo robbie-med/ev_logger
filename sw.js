@@ -3,8 +3,8 @@
  */
 'use strict';
 
-const CACHE = 'duty-hours-v7';
-const SHELL = ['./', 'index.html', 'app.js', 'fun.js', 'style.css', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
+const CACHE = 'duty-hours-v11';
+const SHELL = ['./', 'index.html', 'app.js', 'fun.js', 'style.css', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'nuke.gif'];
 
 self.addEventListener('install', event => {
   event.waitUntil((async () => {

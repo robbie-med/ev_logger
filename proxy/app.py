@@ -34,6 +34,7 @@ import secrets
 import threading
 import time
 from calendar import monthrange
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta
 from html.parser import HTMLParser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -125,11 +126,21 @@ def parse_entries(html):
     return out
 
 
-def amion_get(url):
+_amion_cache = {}  # url -> (fetched_at, text); ponytail: unbounded, but it's months x 3 pages
+
+
+def amion_get(url, ttl=600):
+    """Amion pages are the same for every resident, so keep each one for 10 minutes."""
+    hit = _amion_cache.get(url)
+    if hit and time.time() - hit[0] < ttl:
+        return hit[1]
     proxy = os.environ.get('EV_SOCKS_PROXY')
     resp = requests.get(url, timeout=30, headers={'User-Agent': UA},
                         proxies={'http': proxy, 'https': proxy} if proxy else None)
-    return resp.content.decode('latin-1')
+    text = resp.content.decode('latin-1')
+    if resp.ok:
+        _amion_cache[url] = (time.time(), text)
+    return text
 
 
 def amion_month(lo, year, month):
@@ -208,7 +219,9 @@ def amion_roster(lo, year, month):
         p.feed(html)
         return {' '.join(r[0]).rsplit(' ', 1)[0].replace(' ', ' ').strip() for r in p.rows
                 if len(r) > 20 and r[0] and ' ' in ' '.join(r[0])}
-    return sorted(names(amion_block(lo, year, month)) - names(amion_block(lo, year, month, 1)))
+    with ThreadPoolExecutor(2) as pool:  # both pages at once
+        everyone, faculty = pool.map(lambda skill: names(amion_block(lo, year, month, skill)), (-1, 1))
+    return sorted(everyone - faculty)
 
 
 def same_name(a, b):
@@ -682,7 +695,7 @@ class Handler(BaseHTTPRequestHandler):
             self._send_json({'ok': False, 'reason': 'plan too large'}, 413)
             return
         plan = self._body()
-        if not isinstance(plan.get('plan'), dict) or not isinstance(plan.get('presets'), list):
+        if plan.get('version') != 2 or not isinstance(plan.get('days'), dict) or not isinstance(plan.get('rotations'), list):
             self._send_json({'ok': False, 'reason': 'bad plan'}, 400)
             return
         write_json(path, plan)

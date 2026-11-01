@@ -862,22 +862,31 @@ async function prefillAmion() {
 }
 
 /** Fill the Settings name suggestions from this month's Amion roster. */
-/** Fill the name dropdown from Amion's block-schedule roster (every resident, faculty excluded). */
+/** Fill the name dropdown from Amion's block-schedule roster (every resident, faculty excluded).
+ *  Shows the last list instantly (or a spinner on first visit) while a fresh copy loads. */
 async function loadAmionNames(sel = $('set-amion-name')) {
-  const fill = names => {
+  const fill = (names, loading) => {
     sel.innerHTML = '';
-    const blank = el('option', '', '— pick your name —');
+    const blank = el('option', '', loading ? 'Loading names…' : '— pick your name —');
     blank.value = '';
     sel.appendChild(blank);
     [...new Set([...names, settings.amionName].filter(Boolean))].sort()
       .forEach(n => { const o = el('option', '', n); o.value = n; sel.appendChild(o); });
     sel.value = settings.amionName || '';
   };
-  fill([]);
+  const cached = store.get('names', []);
+  const box = sel.closest('label');
+  box.classList.toggle('loading', !cached.length);
+  fill(cached, !cached.length);
   try {
     const { names } = await api('/amion/names', { params: { m: iso(new Date()).slice(0, 7), lo: settings.amionLo || DEFAULT_AMION } });
-    fill(names);
-  } catch { /* keep whatever is saved */ }
+    store.set('names', names);
+    fill(names, false);
+  } catch {
+    fill(cached, false);
+  } finally {
+    box.classList.remove('loading');
+  }
 }
 
 function applySchedule() {
@@ -953,12 +962,43 @@ function toggleJitter() {
   render();
 }
 
+/** Wipe the month's plan: every unsent day and the rotations, so nothing is left to send. e-value entries stay. */
 function clearMonth() {
-  const dates = monthDates().filter(d => dh.days[d] && !logged(d));
-  if (!dates.length || !confirm(`Clear ${dates.length} planned day(s) in ${month}? (Rotations stay.)`)) return;
-  dates.forEach(d => delete dh.days[d]);
+  const dates = monthDates();
+  const first = dates[0], last = dates[dates.length - 1];
+  const days = dates.filter(d => dh.days[d] && !logged(d));
+  const rots = dh.rotations.filter(r => r.from <= last && r.to >= first);
+  if (!days.length && !rots.length) return toast('Nothing planned this month.');
+  if (!confirm(`Clear everything planned in ${month}? (${days.length} day(s), ${rots.length} rotation(s). Days already in e-value are not touched.)`)) return;
+  days.forEach(d => delete dh.days[d]);
+  // Trim rotations to outside this month (a block spanning the boundary keeps its other-month part).
+  dh.rotations = dh.rotations.flatMap(r => {
+    if (!rots.includes(r)) return [r];
+    const out = [];
+    if (r.from < first) out.push({ ...r, to: addDays(first, -1) });
+    if (r.to > last) out.push({ ...r, from: addDays(last, 1) });
+    return out;
+  });
+  delete amionCache[month]; // or a mapping change would rebuild the month
+  store.set('amion', amionCache);
   save();
   render();
+  toast(`Cleared ${month}.`);
+}
+
+/** Wipe the whole plan, every month: days, rotations, cached Amion data. Types, mappings and weekly blocks stay. */
+function clearAll() {
+  const days = Object.keys(dh.days).filter(d => !logged(d));
+  if (!days.length && !dh.rotations.length) return toast('Nothing planned.');
+  if (!confirm(`Clear the plan for EVERY month? (${days.length} day(s), ${dh.rotations.length} rotation(s). Days already in e-value are not touched.)`)) return;
+  days.forEach(d => delete dh.days[d]);
+  dh.rotations = [];
+  amionCache = {};
+  store.set('amion', amionCache);
+  save();
+  render();
+  toast('Cleared every month.');
+  if (window.Fun && Fun.on) Fun.nuke();
 }
 
 // ---------- submit ----------
@@ -1096,6 +1136,7 @@ function bind() {
   $('fill-weekdays').onclick = () => fill(true);
   $('fill-all').onclick = () => fill(false);
   $('clear-month').onclick = clearMonth;
+  $('clear-all').onclick = clearAll;
   $('paste-sched').onclick = () => { $('paster').classList.remove('hidden'); $('paste-text').focus(); };
   $('paste-apply').onclick = applySchedule;
   $('paste-cancel').onclick = () => $('paster').classList.add('hidden');
