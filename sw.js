@@ -3,7 +3,7 @@
  */
 'use strict';
 
-const CACHE = 'duty-hours-v11';
+const CACHE = 'duty-hours-v12';
 const SHELL = ['./', 'index.html', 'app.js', 'fun.js', 'style.css', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'nuke.gif'];
 
 self.addEventListener('install', event => {

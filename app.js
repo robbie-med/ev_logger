@@ -963,13 +963,13 @@ function toggleJitter() {
 }
 
 /** Wipe the month's plan: every unsent day and the rotations, so nothing is left to send. e-value entries stay. */
-function clearMonth() {
+function clearMonth(silent = false) {
   const dates = monthDates();
   const first = dates[0], last = dates[dates.length - 1];
   const days = dates.filter(d => dh.days[d] && !logged(d));
   const rots = dh.rotations.filter(r => r.from <= last && r.to >= first);
-  if (!days.length && !rots.length) return toast('Nothing planned this month.');
-  if (!confirm(`Clear everything planned in ${month}? (${days.length} day(s), ${rots.length} rotation(s). Days already in e-value are not touched.)`)) return;
+  if (!silent && !days.length && !rots.length) return toast('Nothing planned this month.');
+  if (!silent && !confirm(`Clear everything planned in ${month}? (${days.length} day(s), ${rots.length} rotation(s). Days already in e-value are not touched.)`)) return;
   days.forEach(d => delete dh.days[d]);
   // Trim rotations to outside this month (a block spanning the boundary keeps its other-month part).
   dh.rotations = dh.rotations.flatMap(r => {
@@ -983,22 +983,42 @@ function clearMonth() {
   store.set('amion', amionCache);
   save();
   render();
-  toast(`Cleared ${month}.`);
+  if (!silent) toast(`Cleared ${month}.`);
 }
 
-/** Wipe the whole plan, every month: days, rotations, cached Amion data. Types, mappings and weekly blocks stay. */
-function clearAll() {
-  const days = Object.keys(dh.days).filter(d => !logged(d));
-  if (!days.length && !dh.rotations.length) return toast('Nothing planned.');
-  if (!confirm(`Clear the plan for EVERY month? (${days.length} day(s), ${dh.rotations.length} rotation(s). Days already in e-value are not touched.)`)) return;
-  days.forEach(d => delete dh.days[d]);
-  dh.rotations = [];
-  amionCache = {};
-  store.set('amion', amionCache);
-  save();
-  render();
-  toast('Cleared every month.');
-  if (window.Fun && Fun.on) Fun.nuke();
+/** This month only: wipe the plan (as Clear month) AND delete every e-value entry in it. Other months untouched. */
+async function clearAll() {
+  const b = $('clear-all');
+  b.disabled = true;
+  try {
+    await loadMonth(month); // fresh read, so we delete exactly what e-value has now
+    // An overnight entry shows on two days with one dhid: delete it once, on the day it starts.
+    const seen = new Set();
+    const entries = (ev[month] || []).filter(x => x.dhid && !seen.has(x.dhid) && seen.add(x.dhid));
+    if (!confirm(`Clear ALL of ${month}?
+
+• Delete ${entries.length} entr${entries.length === 1 ? 'y' : 'ies'} from e-value
+• Clear this month's plan and rotations
+
+Other months are not touched. This can't be undone.`)) return;
+    let done = 0;
+    const failed = [];
+    for (const x of entries) {
+      b.textContent = `Deleting ${done + 1}/${entries.length}…`;
+      try { await api('/delete', { method: 'POST', body: { dhid: x.dhid, date: x.date } }); done++; }
+      catch (err) { failed.push(`${x.date.slice(5)} ${x.s || ''}: ${err.message}`); }
+    }
+    await loadMonth(month).catch(() => {});
+    clearMonth(true); // after the deletes, so freed days lose their plan too (entries that failed keep theirs)
+    if (failed.length) toast(`Deleted ${done}; ${failed.length} couldn't be: ${failed.slice(0, 3).join('; ')}${failed.length > 3 ? '…' : ''}`, 9000);
+    else toast(`Cleared ${month}: ${done} e-value entr${done === 1 ? 'y' : 'ies'} deleted.`);
+    if (window.Fun && Fun.on) Fun.nuke();
+  } catch (err) {
+    toast('Failed: ' + err.message, 7000);
+  } finally {
+    b.disabled = false;
+    b.textContent = 'Clear all';
+  }
 }
 
 // ---------- submit ----------
@@ -1135,7 +1155,7 @@ function bind() {
   $('fun').onclick = () => { $('fun').classList.toggle('active', Fun.toggle()); };
   $('fill-weekdays').onclick = () => fill(true);
   $('fill-all').onclick = () => fill(false);
-  $('clear-month').onclick = clearMonth;
+  $('clear-month').onclick = () => clearMonth();
   $('clear-all').onclick = clearAll;
   $('paste-sched').onclick = () => { $('paster').classList.remove('hidden'); $('paste-text').focus(); };
   $('paste-apply').onclick = applySchedule;
